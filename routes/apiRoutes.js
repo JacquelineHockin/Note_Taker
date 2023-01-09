@@ -1,29 +1,38 @@
-const router = require('express').Router();
-const store = require('../db/store');
+// dependencies
+const fs = require("fs");
+const { v4: uuidv4 } = require("uuid");
 
-// GET "/api/notes" responds with all notes from the database
-router.get('/notes', (req, res) => {
-  store
-    .getNotes()
-    .then((notes) => {
-      return res.json(notes);
-    })
-    .catch((err) => res.status(500).json(err));
-});
+module.exports = (app) => {
+  // creates notes var
+  fs.readFile("db/db.json", "utf8", (err, data) => {
+    if (err) throw err;
 
-router.post('/notes', (req, res) => {
-  store
-    .addNote(req.body)
-    .then((note) => res.json(note))
-    .catch((err) => res.status(500).json(err));
-});
+    var notes = JSON.parse(data);
+    console.log("notes1", notes);
 
-// DELETE "/api/notes" deletes the note with an id equal to req.params.id
-router.delete('/notes/:id', (req, res) => {
-  store
-    .removeNote(req.params.id)
-    .then(() => res.json({ ok: true }))
-    .catch((err) => res.status(500).json(err));
-});
+    // updates the db when a note is added/deleted
+    function updateDb() {
+      fs.writeFile("db/db.json", JSON.stringify(notes, "\t"), (err) => {
+        if (err) throw err;
+        return true;
+      });
+    }
 
-module.exports = router;
+    // API route GET request
+    app.get("/api/notes", function (req, res) {
+      //returns saved notes as JSON
+      res.json(notes);
+    });
+
+    // API route POST request
+    app.post("/api/notes", function (req, res) {
+      // Receives new note, adds to db, returns new note
+      let newNote = req.body;
+      newNote.id = uuidv4();
+      notes.push(newNote);
+      updateDb();
+      res.json(newNote);
+      return console.log("Added new note: " + newNote.title);
+    });
+  });
+};
